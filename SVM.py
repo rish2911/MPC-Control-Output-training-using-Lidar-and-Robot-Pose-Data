@@ -59,8 +59,8 @@ class SupportVectorMachine():
             """Kernel can be changed to rbf, poly, 
             rbf is default"""
             self.model_ ='poly'
-            reg_v = SVR(kernel = self.model_,C=k, epsilon=0.2, degree=6)
-            reg_omega = SVR(kernel = self.model_,C=k, epsilon=0.2, degree=6)
+            reg_v = make_pipeline(StandardScaler(),SVR(kernel = self.model_,C=k, epsilon=0.2, degree=6))
+            reg_omega = make_pipeline(StandardScaler(),SVR(kernel = self.model_,C=k, epsilon=0.2, degree=6))
             reg_v.fit(X_train, y_train[:,0])
             reg_omega.fit(X_train, y_train[:,1])
             # w_b = reg_v.coef_
@@ -111,7 +111,7 @@ class SupportVectorMachine():
 
         #MERGING VALIDATION, RE-TRAINING AND TESTING
         ###Velocity
-        reg_v = SVR(kernel = self.model_,C=final_kv, epsilon=0.2, degree=3)
+        reg_v = make_pipeline(StandardScaler(),SVR(kernel = self.model_,C=final_kv, epsilon=0.2, degree=3))
         reg_v.fit(self.X_train_og, self.y_train_og[:,0])
         y_pred_test_v = reg_v.predict(self.X_test)
         y_pred_test_v[y_pred_test_v>np.max(self.y_test[:,0])] = np.max(self.y_test[:,0])
@@ -120,7 +120,7 @@ class SupportVectorMachine():
         print('Out sample error for velocity with k = ', final_kv, ' \n', outscore_v)
         
         ###omega range
-        reg_omega = SVR(kernel = self.model_,C=final_ko, epsilon=0.2, degree=6)
+        reg_omega = make_pipeline(StandardScaler(),SVR(kernel = self.model_,C=final_ko, epsilon=0.2, degree=5))
         reg_omega.fit(self.X_train_og, self.y_train_og[:,1])
         y_pred_test_o = reg_omega.predict(self.X_test)
         y_pred_test_o[y_pred_test_o>np.max(self.y_test[:,1])] = np.max(self.y_test[:,1])
@@ -142,7 +142,8 @@ class SupportVectorMachine():
         return pred
 
     def learning_curves(self, X,y, kernel:str, final_c:float):
-        train_sizes, train_scores, test_scores = learning_curve(SVR(kernel=kernel, C=final_c, epsilon=0.2, degree=6), X, y, cv=10, n_jobs=-1, train_sizes=np.linspace(0.01, 1.0, 50))
+        train_sizes, train_scores, test_scores = learning_curve(make_pipeline(StandardScaler(), SVR(kernel=kernel, C=final_c, epsilon=0.2, degree=6)), X, y, \
+            cv=10, n_jobs=-1, train_sizes=np.linspace(0.01, 1.0, 50))
         train_mean = np.mean(train_scores, axis=1)
         train_std = np.std(train_scores, axis=1)
 

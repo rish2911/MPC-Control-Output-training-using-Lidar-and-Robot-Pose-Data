@@ -10,6 +10,7 @@ import sklearn.metrics  as sk
 from sklearn.model_selection import learning_curve
 import matplotlib.pyplot as plt
 from sklearn.model_selection import GridSearchCV
+from sklearn.neural_network import MLPRegressor
 
 class NeuralNet():
     def __init__(self) -> None:
@@ -21,10 +22,11 @@ class NeuralNet():
         ###Preprocessing
         # self.X_train_og = self.scaler_.fit_transform(X_tr)
         self.X_train_og = X_tr
-        self.y_train_og = y_tr
+        self.y_train_og = y_tr*100
+    
         # self.X_test = self.scaler_.fit_transform(X_test)
         self.X_test = X_test
-        self.y_test = y_test
+        self.y_test = y_test*100
 
         ###shuffle the data
         self.X_train_og, self.y_train_og = shuffle(self.X_train_og, self.y_train_og, random_state=0)
@@ -48,14 +50,16 @@ class NeuralNet():
         final_ko = 0
         for k in k_all:
 
+            k/=1
+
             #TRAINING
             k_list.append(k)
-            reg_v = xgb.XGBRegressor(objective= "reg:linear", random_state=42, max_depth = k)
+            reg_v = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(10, 2), random_state=1, max_iter=500))
             # xgb_model = xgb.XGBRegressor(n_jobs=multiprocessing.cpu_count() // 2)
             # clf = GridSearchCV(xgb_model, {'max_depth': [2, 4, 6],
             #                        'n_estimators': [50, 100, 200]}, verbose=1,
             #            n_jobs=2)
-            reg_omega = xgb.XGBRegressor(objective= "reg:linear", random_state=42, max_depth = k)
+            reg_omega = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(10, 2), random_state=1, max_iter=500))
             reg_v.fit(X_train, y_train[:,0])
             reg_omega.fit(X_train, y_train[:,1])
             # w_b = reg_v.coef_
@@ -101,13 +105,14 @@ class NeuralNet():
             if min_scoreo<valscore_list_o[-1]:
                 min_scoreo=valscore_list_o[-1]
                 final_ko = k
-            print('Validation sample score for omega with k = ', k, ' \n', valscore_list_o[-1])
+            print('Validation sample score for omega with k = ', k/100, ' \n', valscore_list_o[-1])
         
 
         #MERGING VALIDATION, RE-TRAINING AND TESTING
         ##Velocity
-        reg_v = xgb.XGBRegressor(objective="reg:linear", random_state=42, max_depth = final_kv)
+        reg_v = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=final_kv, hidden_layer_sizes=(10, 2), random_state=1, max_iter=500))
         reg_v.fit(self.X_train_og, self.y_train_og[:,0])
+        print("scalarscoring function for v", reg_v.score(self.X_test, self.y_test[:,0]))
         y_pred_test_v = reg_v.predict(self.X_test)
         y_pred_test_v[y_pred_test_v>np.max(self.y_test[:,0])] = np.max(self.y_test[:,0])
         y_pred_test_v[y_pred_test_v<np.min(self.y_test[:,0])] = np.min(self.y_test[:,0])
@@ -115,8 +120,9 @@ class NeuralNet():
         print('Out sample error for velocity with k = ', final_kv, ' \n', outscore_v)
         
         ###omega range
-        reg_omega = xgb.XGBRegressor(objective= "reg:linear", random_state=42, max_depth = final_ko)
+        reg_omega = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=final_ko, hidden_layer_sizes=(10, 2), random_state=1, max_iter=500))
         reg_omega.fit(self.X_train_og, self.y_train_og[:,1])
+        print("scalarscoring function for w",reg_v.score(self.X_test, self.y_test[:,1]))
         y_pred_test_o = reg_omega.predict(self.X_test)
         y_pred_test_o[y_pred_test_o>np.max(self.y_test[:,1])] = np.max(self.y_test[:,1])
         y_pred_test_o[y_pred_test_o<np.min(self.y_test[:,1])] = np.min(self.y_test[:,1])
@@ -137,8 +143,8 @@ class NeuralNet():
         return pred
 
     def learning_curves(self, X,y, kernel:str, final_c:float):
-        train_sizes, train_scores, test_scores = learning_curve(xgb.XGBRegressor(objective= "reg:linear", \
-            random_state=42, max_depth = final_c), X, y, cv=10, n_jobs=-1, train_sizes=np.linspace(0.01, 1.0, 50))
+        train_sizes, train_scores, test_scores = learning_curve(make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=final_c,\
+            hidden_layer_sizes=(5, 2), random_state=1)), X, y, cv=10, n_jobs=-1, train_sizes=np.linspace(0.01, 1.0, 50))
         train_mean = np.mean(train_scores, axis=1)
         train_std = np.std(train_scores, axis=1)
 

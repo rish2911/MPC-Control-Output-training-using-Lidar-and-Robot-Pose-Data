@@ -1,5 +1,4 @@
 import numpy as np
-import perceptron as perc
 import regression as reg
 import NeuralNet as nn
 import SVM as supp
@@ -29,7 +28,7 @@ class MPCLearning():
 
         if model != None:
             model_map = {"Reg": reg.Simple_Regression(),\
-                "NN":nn, "SVM":supp.SupportVectorMachine(), "XG":xg.XGBooster()}
+                "NN":nn.NeuralNet(), "SVM":supp.SupportVectorMachine(), "XG":xg.XGBooster()}
             self.model_ = model_map[model]
 
             self.model_.run_model(A_train, y_train, A_test, y_test)
