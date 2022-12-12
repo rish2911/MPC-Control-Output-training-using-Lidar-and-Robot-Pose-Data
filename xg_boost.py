@@ -9,9 +9,12 @@ from sklearn.model_selection import train_test_split
 import sklearn.metrics  as sk
 from sklearn.model_selection import learning_curve
 import matplotlib.pyplot as plt
+import xgboost as xgb
 from sklearn.model_selection import GridSearchCV
 
-class NeuralNet():
+
+
+class XGBooster():
     def __init__(self) -> None:
         self.model_ = None
         self.weights_ = None

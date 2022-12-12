@@ -60,7 +60,7 @@ class SupportVectorMachine():
             rbf is default"""
             self.model_ ='poly'
             reg_v = SVR(kernel = self.model_,C=k, epsilon=0.2, degree=6)
-            reg_omega = reg_v
+            reg_omega = SVR(kernel = self.model_,C=k, epsilon=0.2, degree=6)
             reg_v.fit(X_train, y_train[:,0])
             reg_omega.fit(X_train, y_train[:,1])
             # w_b = reg_v.coef_
@@ -111,13 +111,13 @@ class SupportVectorMachine():
 
         #MERGING VALIDATION, RE-TRAINING AND TESTING
         ###Velocity
-        # reg_v = SVR(kernel = self.model_,C=final_kv, epsilon=0.2, degree=3)
-        # reg_v.fit(self.X_train_og, self.y_train_og[:,0])
-        # y_pred_test_v = reg_v.predict(self.X_test)
-        # y_pred_test_v[y_pred_test_v>np.max(self.y_test[:,0])] = np.max(self.y_test[:,0])
-        # y_pred_test_v[y_pred_test_v<np.min(self.y_test[:,0])] = np.min(self.y_test[:,0])
-        # outscore_v = (self.raw_score(self.y_test[:,0], y_pred_test_v))
-        # print('Out sample error for velocity with k = ', final_kv, ' \n', outscore_v)
+        reg_v = SVR(kernel = self.model_,C=final_kv, epsilon=0.2, degree=3)
+        reg_v.fit(self.X_train_og, self.y_train_og[:,0])
+        y_pred_test_v = reg_v.predict(self.X_test)
+        y_pred_test_v[y_pred_test_v>np.max(self.y_test[:,0])] = np.max(self.y_test[:,0])
+        y_pred_test_v[y_pred_test_v<np.min(self.y_test[:,0])] = np.min(self.y_test[:,0])
+        outscore_v = (self.raw_score(self.y_test[:,0], y_pred_test_v))
+        print('Out sample error for velocity with k = ', final_kv, ' \n', outscore_v)
         
         ###omega range
         reg_omega = SVR(kernel = self.model_,C=final_ko, epsilon=0.2, degree=6)

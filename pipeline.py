@@ -6,6 +6,7 @@ import SVM as supp
 from utils import euler_from_quaternion
 from data_import import data_imp
 import sklearn.metrics  as sk
+import xg_boost as xg
 
 
 
@@ -28,7 +29,7 @@ class MPCLearning():
 
         if model != None:
             model_map = {"Reg": reg.Simple_Regression(),\
-                "NN":nn, "SVM":supp.SupportVectorMachine()}
+                "NN":nn, "SVM":supp.SupportVectorMachine(), "XG":xg.XGBooster()}
             self.model_ = model_map[model]
 
             self.model_.run_model(A_train, y_train, A_test, y_test)
