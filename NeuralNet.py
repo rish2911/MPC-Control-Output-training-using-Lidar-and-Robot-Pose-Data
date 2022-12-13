@@ -22,11 +22,11 @@ class NeuralNet():
         ###Preprocessing
         # self.X_train_og = self.scaler_.fit_transform(X_tr)
         self.X_train_og = X_tr
-        self.y_train_og = y_tr*100
+        self.y_train_og = y_tr
     
         # self.X_test = self.scaler_.fit_transform(X_test)
         self.X_test = X_test
-        self.y_test = y_test*100
+        self.y_test = y_test
 
         ###shuffle the data
         self.X_train_og, self.y_train_og = shuffle(self.X_train_og, self.y_train_og, random_state=0)
@@ -44,22 +44,18 @@ class NeuralNet():
         valscore_list_v = []
         inscore_list_o = []
         valscore_list_o = []
-        min_scorev = 0
-        min_scoreo = 0
+        min_scorev = 10000
+        min_scoreo = 10000
         final_kv = 0
         final_ko = 0
         for k in k_all:
 
             k/=1
 
-            #TRAINING
+            ##PREPROCESSING AND TRAINING
             k_list.append(k)
-            reg_v = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(10, 2), random_state=1, max_iter=500))
-            # xgb_model = xgb.XGBRegressor(n_jobs=multiprocessing.cpu_count() // 2)
-            # clf = GridSearchCV(xgb_model, {'max_depth': [2, 4, 6],
-            #                        'n_estimators': [50, 100, 200]}, verbose=1,
-            #            n_jobs=2)
-            reg_omega = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(10, 2), random_state=1, max_iter=500))
+            reg_v = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(1, 1), random_state=1, max_iter=100))
+            reg_omega = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(30, 2), random_state=1, max_iter=1000))
             reg_v.fit(X_train, y_train[:,0])
             reg_omega.fit(X_train, y_train[:,1])
             # w_b = reg_v.coef_
@@ -95,14 +91,14 @@ class NeuralNet():
             #PERFORMANCE
             ###velocity
             valscore_list_v.append(self.raw_score(y_val[:,0], y_pred_val_v))
-            if min_scorev<valscore_list_v[-1]:
+            if min_scorev>valscore_list_v[-1]:
                 min_scorev=valscore_list_v[-1]
                 final_kv = k
-            # print('Validation sample score for velocity with k = ', k, ' \n', valscore_list_v[-1])
+            print('Validation sample score for velocity with k = ', k, ' \n', valscore_list_v[-1])
 
             ###Omega
             valscore_list_o.append(self.raw_score(y_val[:,1], y_pred_val_o))
-            if min_scoreo<valscore_list_o[-1]:
+            if min_scoreo>valscore_list_o[-1]:
                 min_scoreo=valscore_list_o[-1]
                 final_ko = k
             print('Validation sample score for omega with k = ', k/100, ' \n', valscore_list_o[-1])
@@ -130,11 +126,9 @@ class NeuralNet():
         print('Out sample error for omega with k = ', final_ko, ' \n', outscore_o)
         
         #PLOTTING
-        #velocity
-        self.hyperparameter_plot(k_list, valscore_list_v, inscore_list_v, 'validation','training')
+        self.hyperparameter_plot(k_list, valscore_list_v, inscore_list_v, 'validation v','training v')
+        self.hyperparameter_plot(k_list, valscore_list_o, inscore_list_o, 'validation w','training w')
         # self.learning_curves(self.X_train_og, self.y_train_og[:,0], self.model_, final_kv)
-        ###Omega
-        self.hyperparameter_plot(k_list, valscore_list_o, inscore_list_o, 'validation','training',)
         # self.learning_curves(self.X_train_og, self.y_train_og[:,1], self.model_, final_ko)
         pass
 
@@ -174,7 +168,8 @@ class NeuralNet():
     def raw_score(self, y_true:np.array, y_pred:np.array)->float:
         #sum of square of residuals
         r2score = sk.r2_score(y_true, y_pred)
-        # MAE = sk.mean_absolute_error(y_true, y_pred)
+        msq = sk.mean_squared_error(y_true, y_pred)
+
 
         """ADD MORE"""
 

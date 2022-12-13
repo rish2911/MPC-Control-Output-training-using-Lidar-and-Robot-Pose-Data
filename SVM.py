@@ -52,7 +52,7 @@ class SupportVectorMachine():
         final_ko = 0
         for k in k_all:
 
-            #TRAINING
+            #PREPROCESSING AND TRAINING
             k = 1/k
             k_list.append(k)
 
@@ -130,16 +130,12 @@ class SupportVectorMachine():
         
         #PLOTTING
         ##velocity
-        # self.hyperparameter_plot(k_list, valscore_list_v, inscore_list_v, 'training','validation')
+        self.hyperparameter_plot(k_list, valscore_list_v, inscore_list_v, 'validation', 'training')
         # self.learning_curves(self.X_train_og, self.y_train_og[:,0], self.model_, final_kv)
         ###Omega
-        self.hyperparameter_plot(k_list, valscore_list_o, inscore_list_o, 'training','validation')
+        self.hyperparameter_plot(k_list, valscore_list_o, inscore_list_o,'validation', 'training')
         self.learning_curves(self.X_train_og, self.y_train_og[:,1], self.model_, final_ko)
         pass
-
-    def prediction(self,W, A_mat):
-        pred = A_mat.dot(W)
-        return pred
 
     def learning_curves(self, X,y, kernel:str, final_c:float):
         train_sizes, train_scores, test_scores = learning_curve(make_pipeline(StandardScaler(), SVR(kernel=kernel, C=final_c, epsilon=0.2, degree=6)), X, y, \
@@ -166,15 +162,16 @@ class SupportVectorMachine():
         plt.plot(k_list, score_list1, label=label1)
         plt.plot(k_list, score_list2, label=label2) 
         plt.xlabel("Regularization parameter alpha or lambda")
-        plt.ylabel("R2 Score")
+        plt.ylabel("MSE")
         plt.legend()
         plt.show()
 
     def raw_score(self, y_true:np.array, y_pred:np.array)->float:
         #sum of square of residuals
         r2score = sk.r2_score(y_true, y_pred)
-        # MAE = sk.mean_absolute_error(y_true, y_pred)
+        msq = sk.mean_squared_error(y_true, y_pred)
 
-        """ADD MORE"""
 
-        return r2score
+        """ADD MORE IF NECESSARY"""
+
+        return msq

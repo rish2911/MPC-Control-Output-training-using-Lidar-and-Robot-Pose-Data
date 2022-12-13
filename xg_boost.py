@@ -45,20 +45,20 @@ class XGBooster():
         valscore_list_v = []
         inscore_list_o = []
         valscore_list_o = []
-        min_scorev = 0
-        min_scoreo = 0
+        min_scorev = 10000
+        min_scoreo = 10000
         final_kv = 0
         final_ko = 0
         for k in k_all:
 
             #TRAINING
             k_list.append(k)
-            reg_v = xgb.XGBRegressor(objective= "reg:linear", random_state=42, max_depth = k)
+            reg_v = make_pipeline(StandardScaler(), xgb.XGBRegressor(objective= "reg:linear", random_state=42, max_depth = k))
             # xgb_model = xgb.XGBRegressor(n_jobs=multiprocessing.cpu_count() // 2)
             # clf = GridSearchCV(xgb_model, {'max_depth': [2, 4, 6],
             #                        'n_estimators': [50, 100, 200]}, verbose=1,
             #            n_jobs=2)
-            reg_omega = xgb.XGBRegressor(objective= "reg:linear", random_state=42, max_depth = k)
+            reg_omega = make_pipeline(StandardScaler(), xgb.XGBRegressor(objective= "reg:linear", random_state=42, max_depth = k))
             reg_v.fit(X_train, y_train[:,0])
             reg_omega.fit(X_train, y_train[:,1])
             # w_b = reg_v.coef_
@@ -94,14 +94,14 @@ class XGBooster():
             #PERFORMANCE
             ###velocity
             valscore_list_v.append(self.raw_score(y_val[:,0], y_pred_val_v))
-            if min_scorev<valscore_list_v[-1]:
+            if min_scorev>valscore_list_v[-1]:
                 min_scorev=valscore_list_v[-1]
                 final_kv = k
-            # print('Validation sample score for velocity with k = ', k, ' \n', valscore_list_v[-1])
+            print('Validation sample score for velocity with k = ', k, ' \n', valscore_list_v[-1])
 
             ###Omega
             valscore_list_o.append(self.raw_score(y_val[:,1], y_pred_val_o))
-            if min_scoreo<valscore_list_o[-1]:
+            if min_scoreo>valscore_list_o[-1]:
                 min_scoreo=valscore_list_o[-1]
                 final_ko = k
             print('Validation sample score for omega with k = ', k, ' \n', valscore_list_o[-1])
@@ -109,7 +109,7 @@ class XGBooster():
 
         #MERGING VALIDATION, RE-TRAINING AND TESTING
         ##Velocity
-        reg_v = xgb.XGBRegressor(objective="reg:linear", random_state=42, max_depth = final_kv)
+        reg_v = make_pipeline(StandardScaler(), xgb.XGBRegressor(objective="reg:linear", random_state=42, max_depth = final_kv))
         reg_v.fit(self.X_train_og, self.y_train_og[:,0])
         y_pred_test_v = reg_v.predict(self.X_test)
         y_pred_test_v[y_pred_test_v>np.max(self.y_test[:,0])] = np.max(self.y_test[:,0])
@@ -118,7 +118,7 @@ class XGBooster():
         print('Out sample error for velocity with k = ', final_kv, ' \n', outscore_v)
         
         ###omega range
-        reg_omega = xgb.XGBRegressor(objective= "reg:linear", random_state=42, max_depth = final_ko)
+        reg_omega = make_pipeline(StandardScaler(), xgb.XGBRegressor(objective= "reg:linear", random_state=42, max_depth = final_ko))
         reg_omega.fit(self.X_train_og, self.y_train_og[:,1])
         y_pred_test_o = reg_omega.predict(self.X_test)
         y_pred_test_o[y_pred_test_o>np.max(self.y_test[:,1])] = np.max(self.y_test[:,1])
@@ -129,10 +129,10 @@ class XGBooster():
         #PLOTTING
         #velocity
         self.hyperparameter_plot(k_list, valscore_list_v, inscore_list_v, 'validation','training')
-        # self.learning_curves(self.X_train_og, self.y_train_og[:,0], self.model_, final_kv)
+        self.learning_curves(self.X_train_og, self.y_train_og[:,0], self.model_, final_kv)
         ###Omega
         self.hyperparameter_plot(k_list, valscore_list_o, inscore_list_o, 'validation','training',)
-        # self.learning_curves(self.X_train_og, self.y_train_og[:,1], self.model_, final_ko)
+        self.learning_curves(self.X_train_og, self.y_train_og[:,1], self.model_, final_ko)
         pass
 
     def prediction(self,W, A_mat):
@@ -140,8 +140,8 @@ class XGBooster():
         return pred
 
     def learning_curves(self, X,y, kernel:str, final_c:float):
-        train_sizes, train_scores, test_scores = learning_curve(xgb.XGBRegressor(objective= "reg:linear", \
-            random_state=42, max_depth = final_c), X, y, cv=10, n_jobs=-1, train_sizes=np.linspace(0.01, 1.0, 50))
+        train_sizes, train_scores, test_scores = learning_curve(make_pipeline(StandardScaler(), xgb.XGBRegressor(objective= "reg:linear", \
+            random_state=42, max_depth = final_c)), X, y, cv=10, n_jobs=-1, train_sizes=np.linspace(0.01, 1.0, 50))
         train_mean = np.mean(train_scores, axis=1)
         train_std = np.std(train_scores, axis=1)
 
@@ -163,16 +163,16 @@ class XGBooster():
     def hyperparameter_plot(self, k_list, score_list1, score_list2,label1='', label2=''):
         plt.plot(k_list, score_list1, label=label1)
         plt.plot(k_list, score_list2, label=label2) 
-        plt.xlabel("Regularization parameter alpha or lambda")
-        plt.ylabel("R2 Score")
+        plt.xlabel("Regularization parameter depth")
+        plt.ylabel("MSE")
         plt.legend()
         plt.show()
 
     def raw_score(self, y_true:np.array, y_pred:np.array)->float:
         #sum of square of residuals
         r2score = sk.r2_score(y_true, y_pred)
-        # MAE = sk.mean_absolute_error(y_true, y_pred)
+        msq = sk.mean_squared_error(y_true, y_pred)
 
         """ADD MORE"""
 
-        return r2score
+        return msq
