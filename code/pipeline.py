@@ -27,6 +27,8 @@ class MPCLearning():
             A_test, y_test = self.run_testing_model(self.test_data_path_)
 
         if model != None:
+
+            #model instance and run
             model_map = {"Reg": reg.Simple_Regression(),\
                 "NN":nn.NeuralNet(), "SVM":supp.SupportVectorMachine(), "XG":xg.XGBooster()}
             self.model_ = model_map[model]
@@ -95,6 +97,8 @@ class MPCLearning():
 
 
     ###Note: Verify that angle units are same and avoid occurence of infinity
+
+    #angular error between bot;s yaw and shrtest rajectory
     def angle_diff_goal(self, bot_pose:np.array, x_bot:np.array, y_bot:np.array, \
         x_local:np.array, y_local:np.array, x_final:np.array, y_final:np.array)->None:
 
@@ -125,9 +129,11 @@ class MPCLearning():
 
     ####Lidar data usage
 
+    # lidar value in front  of bot
     def distance_in_front(self, lidar_data:np.ndarray)->np.array:
         return lidar_data[:,540]
 
+    # lidar value towwards shortest trajectory
     def space_towards_traj(self, lidar_data:np.array)->np.array:
 
         ####since 0.25 degree is the resolution
@@ -146,12 +152,13 @@ class MPCLearning():
             
        return localtraj_lid, finaltraj_lid
 
+    # yaw diff of bot at current stage and final/initial goal
     def yaw_diff(self, bot_yaw, local_yaw, final_yaw):
         """its basically the difference in yaw angles """
         return np.abs(bot_yaw-local_yaw), np.abs(bot_yaw-final_yaw)
         pass
 
-
+    # distance the bot can move along shortest trajectory avoiding obstacles
     def minimum_corridor(self, lidar_data:np.array)->np.array:
         '''return the minimum distance the robot can move towards local goal
         or final goal along the LOS considering some width of the bot'''
@@ -172,11 +179,8 @@ class MPCLearning():
         for i in range(rows):
             # print(lidar_value_l[i])
             if lidar_value_l[i]==0:
-                alpha_local = int(np.abs(np.rad2deg(np.arctan(np.inf))))
-                
-                
+                alpha_local = int(np.abs(np.rad2deg(np.arctan(np.inf))))      
             else:
-
                 alpha_local = int(np.abs(np.rad2deg(np.arctan(0.6*width_robot/lidar_value_l[i]))))
             if lidar_value_f[i]==0:    
                 alpha_final = int(np.abs(np.rad2deg(np.arctan(np.inf))))
@@ -204,6 +208,7 @@ class MPCLearning():
         return max_local, max_final
 
 
+    # function to call all the features functions above
     def get_features(self, lidar_data, final_xy, final_ang, \
         local_xy, local_ang, bot_xy, \
         bot_ang):
@@ -254,7 +259,9 @@ class MPCLearning():
             # print('shape of feature x'+str(j+1),np.shape(i))
         # f_list = np.stack(f_list, axis=0 )
         # print(np.shape(x1)[0])
+
         """the expression is ugly, find a better way"""
+        """reshaping is important"""
         A_mat = np.hstack((np.ones((np.shape(x1)[0],1)).reshape(np.shape(x1)[0],1),x1.reshape(np.shape(x1)[0],1),\
              x2.reshape(np.shape(x1)[0],1),x3.reshape(np.shape(x1)[0],1),x4.reshape(np.shape(x1)[0],1),\
                 x5.reshape(np.shape(x1)[0],1),x6.reshape(np.shape(x1)[0],1),x7.reshape(np.shape(x1)[0],1),\
@@ -268,6 +275,7 @@ class MPCLearning():
 
     def some_cost_function(self):
         """some MPC cost function like max velocity, max w, max steering angle"""
+        """future implementation"""
         pass
 
     #### models and regularization, just provide the path of data
@@ -291,43 +299,7 @@ class MPCLearning():
         local_xy, local_yaw, bot_xy, \
         bot_yaw)
         return A_mat, output
-        # # print(np.shape(output))
-        # ##weights for v
-        # self.model_.training(A_mat, output[:,0])
-        # self.weights_v = self.model_.weights_
-
-        # ##weights for w
-        # self.model_.training(A_mat, output[:,1])
-        # self.weights_w = self.model_.weights_
-        # print("size of weights ", np.shape(self.weights_w), '\n')
-
-        # pred_output_v = A_mat.dot((self.weights_v.reshape(np.shape(self.weights_v)[0],1)))
-        # print("size of pred v ", np.shape(pred_output_v), '\n')
-        # pred_output_w = A_mat.dot((self.weights_w.reshape(np.shape(self.weights_w)[0],1)))
-        # print("size of pred w ", np.shape(pred_output_w), '\n')
-
-
-
-
-        # ###velocity range
-        # pred_output_v[pred_output_v>np.max(output[:,0])] = np.max(output[:,0])
-        # pred_output_v[pred_output_v<np.min(output[:,0])] = np.min(output[:,0])
-
-        # ###omega range
-        # pred_output_w[pred_output_w>np.max(output[:,1])] = np.max(output[:,1])
-        # pred_output_w[pred_output_w<np.min(output[:,1])] = np.min(output[:,1])
         
-        # score_v = self.raw_score(output[:,0], pred_output_v)
-        # print("R2 insample score for v prediction is ", score_v, '\n')
-
-        # score_w = self.raw_score(output[:,1], pred_output_w)
-        # print("R2 insample score for w prediction is ", score_w, '\n')
-
-
-        # '''finally needed is'''
-        # # self.weights, self.insamplerr, self.in_misc_data =  self.model_.training(tr_input, tr_output)
-        # pass
-
     def run_testing_model(self, data_path:str):
         """desired algorithm will be called and return the epoch"""
         test_data_ = self.data_input_cleaning(data_path)
@@ -342,14 +314,3 @@ class MPCLearning():
         local_xy, local_yaw, bot_xy, \
         bot_yaw)
         return A_mat, output
-
-
-
-
-    def raw_score(self, y_true:np.array, y_pred:np.array)->float:
-        #sum of square of residuals
-        r2score = sk.r2_score(y_true, y_pred)
-        msq_error = sk.mean_squared_error(y_true, y_pred)
-        # max_error = sk.max_error(y_true, y_pred)
-
-        return [r2score, msq_error] 

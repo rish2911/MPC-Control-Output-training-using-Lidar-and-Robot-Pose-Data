@@ -19,19 +19,19 @@ from sklearn.preprocessing import StandardScaler
 # %%
 class Simple_Regression:
     def __init__(self):
-        # self.model_ = LinearRegression()
         self.weights_ = None
-        # self.scaler_ = StandardScaler()
         pass
 
 
     def run_model(self, X_tr, y_tr, X_test, y_test):
 
         ###Preprocessing
-        # self.X_train_og = self.scaler_.fit_transform(X_tr)
+
+        #training data
         self.X_train_og = X_tr
         self.y_train_og = y_tr
-        # self.X_test = self.scaler_.fit_transform(X_test)
+
+        #test data
         self.X_test = X_test
         self.y_test = y_test
 
@@ -39,13 +39,13 @@ class Simple_Regression:
         self.X_train_og, self.y_train_og = shuffle(self.X_train_og, self.y_train_og, random_state=0)
         self.X_test, self.y_test = shuffle(self.X_test, self.y_test, random_state=0)
 
-        ###split data into validation
+        ###split data into training and validation
         X_train, X_val, y_train, y_val = train_test_split(self.X_train_og, self.y_train_og, test_size=0.2, random_state=42)
         print('output training size', y_train.shape)
 
 
 
-        ##perform training 
+        #PARAMETERS
         """try to put alpha for tuning"""
         k_all = range(0,10)
         k_list = []
@@ -60,10 +60,12 @@ class Simple_Regression:
 
         for k in k_all:
           
-            #TRAINING
+            ###Scaling and training
             k/=1
             k_list.append(k)
+            #model instance for velocity
             reg_v = make_pipeline(StandardScaler(), linear_model.Ridge(alpha=k))
+            #model instance for omega
             reg_omega = make_pipeline(StandardScaler(), linear_model.Ridge(alpha=k))
             ###Velocity
             reg_v.fit(X_train, y_train[:,0])
@@ -106,6 +108,7 @@ class Simple_Regression:
             #PERFORMANCE
             ###velocity
             valscore_list_v.append(self.raw_score(y_val[:,0], y_pred_val_v))
+            #storing the hyperparameter value with least error
             if min_scorev<valscore_list_v[-1]:
                 min_scorev=valscore_list_v[-1]
                 final_kv = k
@@ -135,7 +138,6 @@ class Simple_Regression:
         ###omega range
         reg_omega = make_pipeline(StandardScaler(), linear_model.Ridge(alpha=final_ko))
         reg_omega.fit(self.X_train_og, self.y_train_og[:,1])
-        # w_bo = reg_omega.coef_
         y_pred_test_o = reg_omega.predict(self.X_test)
         y_pred_test_o[y_pred_test_o>np.max(self.y_test[:,1])] = np.max(self.y_test[:,1])
         y_pred_test_o[y_pred_test_o<np.min(self.y_test[:,1])] = np.min(self.y_test[:,1])
@@ -145,18 +147,19 @@ class Simple_Regression:
         #PLOTTING
         #velocity
         self.hyperparameter_plot(k_list, valscore_list_v, inscore_list_v, 'validation', 'training')
-        self.learning_curves(self.X_train_og, self.y_train_og[:,0], final_kv)
+        """Uncomment the part below for plotting learning curve"""
+        # self.learning_curves(self.X_train_og, self.y_train_og[:,0], final_kv)
         ###Omega
         self.hyperparameter_plot(k_list, valscore_list_o, inscore_list_o, 'validation', 'training')
-        self.learning_curves(self.X_train_og, self.y_train_og[:,1], final_ko)
+        """Uncomment the part below for plotting learning curve"""
+        # self.learning_curves(self.X_train_og, self.y_train_og[:,1], final_ko)
 
-        
-
-        
+    #conventional prediction function (not used!) 
     def prediction(self,W, A_mat):
         pred = A_mat.dot(W)
         return pred
 
+    #function to plaot learning curve using cross validation
     def learning_curves(self, X,y, alpha):
         train_sizes, train_scores, test_scores = learning_curve(make_pipeline(StandardScaler(), linear_model.Ridge(alpha=alpha)), X, y, cv=10, \
             n_jobs=-1, train_sizes=np.linspace(0.01, 1.0, 50))
@@ -178,6 +181,7 @@ class Simple_Regression:
         plt.tight_layout()
         plt.show()
 
+    # to plot erros and score w.r.t to hyperparamters
     def hyperparameter_plot(self, k_list, score_list1, score_list2,label1='Validation', label2='Validation'):
         plt.plot(k_list, score_list1, label=label1)
         plt.plot(k_list, score_list2, label=label2) 
@@ -187,7 +191,7 @@ class Simple_Regression:
         plt.show()
 
 
-
+    # to find the scores and error in prediction
     def raw_score(self, y_true:np.array, y_pred:np.array)->float:
         #sum of square of residuals
         r2score = sk.r2_score(y_true, y_pred)

@@ -1,6 +1,4 @@
 import numpy as np
-# from sklearn.pipeline import make_pipeline
-# from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -18,10 +16,12 @@ class SupportVectorMachine():
 
     def run_model(self, X_tr, y_tr, X_test, y_test):
         ###Preprocessing
-        # self.X_train_og = self.scaler_.fit_transform(X_tr)
+        
+        #training data
         self.X_train_og = X_tr
         self.y_train_og = y_tr
-        # self.X_test = self.scaler_.fit_transform(X_test)
+ 
+        #test data
         self.X_test = X_test
         self.y_test = y_test
 
@@ -35,7 +35,8 @@ class SupportVectorMachine():
             self.X_test, self.y_test = self.X_test[:12000,:], self.y_test[:12000,:]
 
         print('testing size', self.X_train_og.shape, self.y_train_og)
-        ###split data into validation
+
+        ###split data into training and validation
         X_train, X_val, y_train, y_val = train_test_split(self.X_train_og, self.y_train_og, test_size=0.2, random_state=42)
         print('output training size', y_train.shape)
 
@@ -59,7 +60,9 @@ class SupportVectorMachine():
             """Kernel can be changed to rbf, poly, 
             rbf is default"""
             self.model_ ='poly'
+            #model instance for velocity
             reg_v = make_pipeline(StandardScaler(),SVR(kernel = self.model_,C=k, epsilon=0.2, degree=6))
+            #model instance for omega
             reg_omega = make_pipeline(StandardScaler(),SVR(kernel = self.model_,C=k, epsilon=0.2, degree=6))
             reg_v.fit(X_train, y_train[:,0])
             reg_omega.fit(X_train, y_train[:,1])
@@ -82,7 +85,6 @@ class SupportVectorMachine():
      
 
             #VALIDATION
-            # print(np.shape(A_mat_test))
             y_pred_val_v = reg_v.predict(X_val)
              # ###velocity range
             y_pred_val_v[y_pred_val_v>np.max(y_val[:,0])] = np.max(y_val[:,0])
@@ -96,10 +98,11 @@ class SupportVectorMachine():
             #PERFORMANCE
             ###velocity
             valscore_list_v.append(self.raw_score(y_val[:,0], y_pred_val_v))
+            #storing the hyperparameter value with least error
             if min_scorev<valscore_list_v[-1]:
                 min_scorev=valscore_list_v[-1]
                 final_kv = k
-            # print('Validation sample score for velocity with k = ', k, ' \n', valscore_list_v[-1])
+            print('Validation sample score for velocity with k = ', k, ' \n', valscore_list_v[-1])
 
             ###Omega
             valscore_list_o.append(self.raw_score(y_val[:,1], y_pred_val_o))
@@ -131,12 +134,15 @@ class SupportVectorMachine():
         #PLOTTING
         ##velocity
         self.hyperparameter_plot(k_list, valscore_list_v, inscore_list_v, 'validation', 'training')
+        """Uncomment the part below for plotting learning curve"""
         # self.learning_curves(self.X_train_og, self.y_train_og[:,0], self.model_, final_kv)
         ###Omega
         self.hyperparameter_plot(k_list, valscore_list_o, inscore_list_o,'validation', 'training')
-        self.learning_curves(self.X_train_og, self.y_train_og[:,1], self.model_, final_ko)
+        """Uncomment the part below for plotting learning curve"""
+        # self.learning_curves(self.X_train_og, self.y_train_og[:,1], self.model_, final_ko)
         pass
 
+    #function to plaot learning curve using cross validation    
     def learning_curves(self, X,y, kernel:str, final_c:float):
         train_sizes, train_scores, test_scores = learning_curve(make_pipeline(StandardScaler(), SVR(kernel=kernel, C=final_c, epsilon=0.2, degree=6)), X, y, \
             cv=10, n_jobs=-1, train_sizes=np.linspace(0.01, 1.0, 50))
@@ -158,6 +164,8 @@ class SupportVectorMachine():
         plt.tight_layout()
         plt.show()
 
+
+    # to plot erros and score w.r.t to hyperparamters
     def hyperparameter_plot(self, k_list, score_list1, score_list2,label1='', label2=''):
         plt.plot(k_list, score_list1, label=label1)
         plt.plot(k_list, score_list2, label=label2) 
@@ -166,6 +174,7 @@ class SupportVectorMachine():
         plt.legend()
         plt.show()
 
+    # to find the scores and error in prediction
     def raw_score(self, y_true:np.array, y_pred:np.array)->float:
         #sum of square of residuals
         r2score = sk.r2_score(y_true, y_pred)

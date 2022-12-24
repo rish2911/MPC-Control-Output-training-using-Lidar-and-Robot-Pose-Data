@@ -1,6 +1,4 @@
 import numpy as np
-# from sklearn.pipeline import make_pipeline
-# from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -19,12 +17,13 @@ class NeuralNet():
         pass
 
     def run_model(self, X_tr, y_tr, X_test, y_test):
-        ###Preprocessing
-        # self.X_train_og = self.scaler_.fit_transform(X_tr)
+        ###Preprocessing of data
+
+        #training data
         self.X_train_og = X_tr
         self.y_train_og = y_tr
     
-        # self.X_test = self.scaler_.fit_transform(X_test)
+        #test data
         self.X_test = X_test
         self.y_test = y_test
 
@@ -33,7 +32,8 @@ class NeuralNet():
         self.X_test, self.y_test = shuffle(self.X_test, self.y_test, random_state=0)
 
         print('testing size', self.X_train_og.shape, self.y_train_og)
-        ###split data into validation
+        
+        ###split data into training and validation
         X_train, X_val, y_train, y_val = train_test_split(self.X_train_og, self.y_train_og, test_size=0.2, random_state=42)
         print('output training size', y_train.shape)
 
@@ -52,13 +52,14 @@ class NeuralNet():
 
             k/=1
 
-            ##PREPROCESSING AND TRAINING
+            ##Scaling and training
             k_list.append(k)
-            reg_v = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(1, 1), random_state=1, max_iter=100))
-            reg_omega = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(30, 2), random_state=1, max_iter=1000))
+            #model instance for velocity
+            reg_v = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(10, 2), random_state=1, max_iter=500))
+            #model instance for omega
+            reg_omega = make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=k, hidden_layer_sizes=(10, 2), random_state=1, max_iter=500))
             reg_v.fit(X_train, y_train[:,0])
             reg_omega.fit(X_train, y_train[:,1])
-            # w_b = reg_v.coef_
 
             #IN SAMPLE TEST
             y_pred_train_v = reg_v.predict(X_train)
@@ -77,9 +78,8 @@ class NeuralNet():
      
 
             #VALIDATION
-            # print(np.shape(A_mat_test))
             y_pred_val_v = reg_v.predict(X_val)
-             # ###velocity range
+            ###velocity range
             y_pred_val_v[y_pred_val_v>np.max(y_val[:,0])] = np.max(y_val[:,0])
             y_pred_val_v[y_pred_val_v<np.min(y_val[:,0])] = np.min(y_val[:,0])
 
@@ -91,14 +91,15 @@ class NeuralNet():
             #PERFORMANCE
             ###velocity
             valscore_list_v.append(self.raw_score(y_val[:,0], y_pred_val_v))
-            if min_scorev>valscore_list_v[-1]:
+            #storing the hyperparameter value with least error
+            if min_scorev<valscore_list_v[-1]:
                 min_scorev=valscore_list_v[-1]
                 final_kv = k
             print('Validation sample score for velocity with k = ', k, ' \n', valscore_list_v[-1])
 
             ###Omega
             valscore_list_o.append(self.raw_score(y_val[:,1], y_pred_val_o))
-            if min_scoreo>valscore_list_o[-1]:
+            if min_scoreo<valscore_list_o[-1]:
                 min_scoreo=valscore_list_o[-1]
                 final_ko = k
             print('Validation sample score for omega with k = ', k/100, ' \n', valscore_list_o[-1])
@@ -128,14 +129,18 @@ class NeuralNet():
         #PLOTTING
         self.hyperparameter_plot(k_list, valscore_list_v, inscore_list_v, 'validation v','training v')
         self.hyperparameter_plot(k_list, valscore_list_o, inscore_list_o, 'validation w','training w')
-        # self.learning_curves(self.X_train_og, self.y_train_og[:,0], self.model_, final_kv)
-        # self.learning_curves(self.X_train_og, self.y_train_og[:,1], self.model_, final_ko)
-        pass
 
+        """Uncomment the part below for plotting learning curve"""
+        # self.learning_curves(self.X_train_og[:100000], self.y_train_og[:100000,0], self.model_, final_kv)
+        # self.learning_curves(self.X_train_og[:100000], self.y_train_og[:100000,1], self.model_, final_ko)
+        pass
+    
+    #conventional prediction function (not used!)
     def prediction(self,W, A_mat):
         pred = A_mat.dot(W)
         return pred
 
+    #function to plaot learning curve using cross validation
     def learning_curves(self, X,y, kernel:str, final_c:float):
         train_sizes, train_scores, test_scores = learning_curve(make_pipeline(StandardScaler(), MLPRegressor(solver='lbfgs', alpha=final_c,\
             hidden_layer_sizes=(5, 2), random_state=1)), X, y, cv=10, n_jobs=-1, train_sizes=np.linspace(0.01, 1.0, 50))
@@ -157,20 +162,22 @@ class NeuralNet():
         plt.tight_layout()
         plt.show()
 
+    # to plot erros and score w.r.t to hyperparamters
     def hyperparameter_plot(self, k_list, score_list1, score_list2,label1='', label2=''):
         plt.plot(k_list, score_list1, label=label1)
         plt.plot(k_list, score_list2, label=label2) 
         plt.xlabel("Regularization parameter alpha or lambda")
-        plt.ylabel("R2 Score")
+        plt.ylabel("MSE")
         plt.legend()
         plt.show()
 
+    # to find the scores and error in prediction
     def raw_score(self, y_true:np.array, y_pred:np.array)->float:
         #sum of square of residuals
         r2score = sk.r2_score(y_true, y_pred)
         msq = sk.mean_squared_error(y_true, y_pred)
 
 
-        """ADD MORE"""
+        """ADD MORE IF NEEDED"""
 
-        return r2score
+        return msq
